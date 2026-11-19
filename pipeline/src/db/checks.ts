@@ -30,6 +30,8 @@ const CATEGORY_COLUMNS: { table: string; column: string; scheme: string; where?:
   { table: "species_ecology", column: "habitat_spec", scheme: "habitat" },
   { table: "species_ecology", column: "activity_breeding", scheme: "activity" },
   { table: "species_ecology", column: "activity_nonbreeding", scheme: "activity" },
+  { table: "species_ecology", column: "trophic_level", scheme: "avonet-trophic-level" },
+  { table: "species_ecology", column: "primary_lifestyle", scheme: "avonet-lifestyle" },
   { table: "assessment", column: "regional_red_list", scheme: "iucn" },
   ...(
     [
@@ -160,6 +162,31 @@ export async function baseChecks(db: Db): Promise<Check[]> {
       ? fail("xref-unique", JSON.stringify(shared.slice(0, 10)))
       : ok("xref-unique", "no two active species share an eBird code or Avibase ID"),
   );
+
+  // Once the eBird taxonomy is loaded, every active species has exactly one eBird code
+  if (await db.count("SELECT count(*) FROM source_release WHERE source_id = 'ebird-tax'")) {
+    const noCode = await db.count(`
+      SELECT count(*) FROM taxon t WHERE t.state = 'active' AND NOT EXISTS (
+        SELECT 1 FROM taxon_xref x WHERE x.taxon_id = t.taxon_id AND x.system = 'ebird')`);
+    out.push(
+      noCode
+        ? fail("ebird-codes", `${noCode} active species have no eBird code`)
+        : ok("ebird-codes", "every active species has one eBird code"),
+    );
+  }
+  // Once AVONET is loaded, at least 95% of active species have its measurements
+  if (await db.count("SELECT count(*) FROM source_release WHERE source_id = 'avonet'")) {
+    const [m] = await db.rows<{ active: number; measured: number }>(`
+      SELECT (SELECT count(*) FROM taxon WHERE state = 'active')::INTEGER AS active,
+             (SELECT count(DISTINCT m.taxon_id) FROM species_morphology m
+              JOIN source_release r USING (release_id) WHERE r.source_id = 'avonet')::INTEGER AS measured`);
+    const { active = 0, measured = 0 } = m ?? {};
+    out.push(
+      measured >= 0.95 * active
+        ? ok("avonet-coverage", `${measured} of ${active} species have AVONET measurements`)
+        : fail("avonet-coverage", `only ${measured} of ${active} species have AVONET measurements`),
+    );
+  }
 
   const unnamed = await db.count(`
     SELECT count(*) FROM taxon t WHERE t.state = 'active' AND NOT EXISTS (

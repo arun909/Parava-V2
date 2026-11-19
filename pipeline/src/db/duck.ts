@@ -46,5 +46,6 @@ export const lit = (s: string): string => `'${s.replaceAll("'", "''")}'`;
 /** A quoted SQL identifier. */
 export const ident = (s: string): string => `"${s.replaceAll('"', '""')}"`;
 
-/** A source cell as text, with blanks as NULL. */
-export const nz = (col: string): string => `NULLIF(trim(${ident(col)}), '')`;
+/** A source cell as text, with blanks as NULL; `alias` qualifies the column (e.g. "x"). */
+export const nz = (col: string, alias?: string): string =>
+  `NULLIF(trim(${alias ? `${alias}.` : ""}${ident(col)}), '')`;

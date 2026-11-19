@@ -8,20 +8,28 @@
  */
 import { allChecks, errorsOf } from "./checks.ts";
 import { Db } from "./duck.ts";
+import { loadAvonet } from "./load/avonet.ts";
 import {
   backupBase,
+  csvFileWorkbook,
   csvWorkbook,
   inReleaseTransaction,
   rawFor,
   type Workbook,
   xlsxWorkbook,
 } from "./load/common.ts";
+import { loadEbd } from "./load/ebird-ebd.ts";
+import { loadEbirdDistricts, loadHotspots } from "./load/ebird-regions.ts";
+import { loadEbirdTaxonomy } from "./load/ebird-taxonomy.ts";
 import { loadIndiaChecklist } from "./load/india-checklist.ts";
 import { loadSoib } from "./load/soib.ts";
 import { companions, findRelease, readManifest, verifiedFile } from "./manifest.ts";
 import { migrateAll } from "./migrate.ts";
 import { dbFile, defaultPaths, type Paths } from "./paths.ts";
 import { writeReport } from "./report.ts";
+
+/** Sources whose loader writes the base, inside one release transaction. */
+const BASE_LOADERS = ["india-checklist", "soib", "ebird-tax", "avonet", "ebird-api"];
 
 export async function load(
   p: Paths,
@@ -34,24 +42,36 @@ export async function load(
   if (r.format === "columns-of") {
     throw new Error(`${releaseId} is loaded with ${r.of}; run db:load ${sourceId} ${r.of}`);
   }
-  const file = verifiedFile(p, r);
-  const wb: Workbook = r.format === "xlsx" ? xlsxWorkbook(file) : csvWorkbook(file);
+  const file = await verifiedFile(p, r);
+  await migrateAll(p, () => {});
+
+  // The eBird Basic Dataset goes to the derived database only
+  if (sourceId === "ebird-ebd") {
+    await loadEbd(p, file, r, log);
+    return "(base unchanged; no backup)";
+  }
+  if (!BASE_LOADERS.includes(sourceId)) throw new Error(`no loader for source ${sourceId} yet`);
+
+  const wb: Workbook =
+    r.format === "xlsx"
+      ? xlsxWorkbook(file)
+      : r.format === "csv"
+        ? csvFileWorkbook(file)
+        : csvWorkbook(file);
   const extra = companions(manifest, releaseId);
   const fileName = file.split("/").pop() ?? null;
 
-  await migrateAll(p, () => {});
   const db = await Db.open(dbFile(p, "base"));
   let releases: string[];
   try {
     await wb.prepare(db);
     await inReleaseTransaction(db, [r, ...extra], fileName, async () => {
-      if (sourceId === "india-checklist") {
-        await loadIndiaChecklist(db, wb, r, rawFor(p, r), log);
-      } else if (sourceId === "soib") {
-        await loadSoib(db, wb, r, extra, rawFor(p, r), log);
-      } else {
-        throw new Error(`no loader for source ${sourceId} yet`);
-      }
+      const raw = rawFor(p, r);
+      if (sourceId === "india-checklist") await loadIndiaChecklist(db, wb, r, raw, log);
+      else if (sourceId === "soib") await loadSoib(db, wb, r, extra, raw, log);
+      else if (sourceId === "ebird-tax") await loadEbirdTaxonomy(db, wb, r, raw, log);
+      else if (sourceId === "avonet") await loadAvonet(db, wb, r, raw, log);
+      else if (sourceId === "ebird-api") await loadEbirdDistricts(db, file, r, log);
     });
     releases = (
       await db.rows<{ release_id: string }>("SELECT release_id FROM source_release ORDER BY 1")
@@ -59,6 +79,8 @@ export async function load(
   } finally {
     db.close();
   }
+  // Hotspots live in the derived database and need the districts committed first
+  if (sourceId === "ebird-api") await loadHotspots(p, file, r, log);
   return backupBase(p, releases);
 }
 

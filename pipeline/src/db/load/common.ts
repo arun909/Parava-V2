@@ -35,6 +35,38 @@ export function csvWorkbook(dir: string): Workbook {
   };
 }
 
+/** A single CSV file, read as the one "sheet" it holds (any sheet name gives the same file). */
+export function csvFileWorkbook(file: string): Workbook {
+  return {
+    sheet: () =>
+      `read_csv(${lit(file)}, all_varchar = true, header = true, delim = ',', quote = '"')`,
+    prepare: async () => {},
+  };
+}
+
+/** The near-me grid key in SQL; must match cell25() in shared/src/cell.ts. */
+export const cell25Sql = (lat: string, lon: string): string =>
+  `CASE WHEN ${lat} IS NOT NULL AND ${lon} IS NOT NULL THEN 'g25_' || CAST(floor((${lat} + 90) / 0.25) AS BIGINT) || '_' || CAST(floor((${lon} + 180) / 0.25) AS BIGINT) END`;
+
+/** The birding week in SQL; must match week48() in shared/src/week.ts. */
+export const week48Sql = (d: string): string =>
+  `((month(${d}) - 1) * 4 + least((day(${d}) - 1) // 7, 3) + 1)`;
+
+/** Treat a placeholder such as 'NA' as blank in every column of a staged table. */
+export async function blankOut(db: Db, table: string, placeholder: string): Promise<void> {
+  const cols = (await db.rows<{ column_name: string }>(`DESCRIBE ${table}`))
+    .map((r) => r.column_name)
+    .filter((c) => !c.startsWith("_"));
+  await db.run(
+    `UPDATE ${table} SET ${cols
+      .map(
+        (c) =>
+          `${ident(c)} = CASE WHEN trim(${ident(c)}) = ${lit(placeholder)} THEN NULL ELSE ${ident(c)} END`,
+      )
+      .join(", ")}`,
+  );
+}
+
 /** Copy a sheet into a temp table with a row number, and keep a verbatim Parquet copy. */
 export async function stage(
   db: Db,

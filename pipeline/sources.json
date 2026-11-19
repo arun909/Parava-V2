@@ -34,6 +34,42 @@
       "of": "soib-2026-v0",
       "url": "https://stateofindiasbirds.in",
       "notes": "The four SoIB 2020 status columns carried in the India sheet of soib-2026-v0."
+    },
+    {
+      "release_id": "ebird-tax-2025",
+      "source_id": "ebird-tax",
+      "version": "2025",
+      "published": "2025-10-01",
+      "status": "final",
+      "format": "csv",
+      "file": "ebird-tax/ebird-tax-2025/taxonomy-2025.csv",
+      "sha256": "993fd0c814c735ced76e1e3351b68b056af69bafb1eef4e30954f570c7a66455",
+      "url": "https://api.ebird.org/v2/ref/taxonomy/ebird?fmt=csv&locale=en&version=2025",
+      "notes": "eBird/Clements taxonomy 2025, fetched from the eBird API on 2026-11-19 (the version SoIB 2026 v0 uses). The API's latest is 2026."
+    },
+    {
+      "release_id": "avonet-1.0",
+      "source_id": "avonet",
+      "version": "1.0 (figshare v7)",
+      "published": "2022-02-01",
+      "status": "final",
+      "format": "xlsx",
+      "file": "avonet/avonet-1.0/AVONET Supplementary dataset 1.xlsx",
+      "sha256": "eb645e83dddb40f1654a3e8d721998dbca76eff540231b7b809267c1e96f8d3e",
+      "url": "https://doi.org/10.6084/m9.figshare.16586228.v7",
+      "notes": "Tobias et al. 2022, Ecology Letters 25: 581-597. CC BY 4.0. Sheets AVONET2_eBird and AVONET1_BirdLife."
+    },
+    {
+      "release_id": "ebird-api-2026-11-19",
+      "source_id": "ebird-api",
+      "version": "2026-11-19",
+      "published": "2026-11-19",
+      "status": "final",
+      "format": "json-dir",
+      "file": "ebird-api/2026-11-19",
+      "sha256": "e47793c49b31af5301501a0152c4ca025e5a9f7e60f3260a866a4d1bfde47bb0",
+      "url": "https://api.ebird.org/v2/ref/",
+      "notes": "eBird API reference data: states, districts, species lists and hotspots for India (pipeline/src/spike/ebird/fetch-reference.ts)."
     }
   ]
 }

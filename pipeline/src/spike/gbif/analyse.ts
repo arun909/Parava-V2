@@ -1,23 +1,31 @@
 /**
- * Spike: can GBIF's eBird records give weekly frequencies and arrival forecasts?
- * Reads .data/spike/raw/<name>.jsonl (search API) or <name>.tsv (SQL download),
- * matches species to the base, computes frequencies and phenology, backtests the
- * forecast gate, and writes docs/reports/spike-gbif-<name>.md.
+ * Spike: can eBird checklists give weekly frequencies and arrival forecasts for a state?
+ * Two sources, same analysis:
+ *   GBIF:  .data/spike/raw/<name>.jsonl (search API) or <name>.tsv (SQL download)
+ *   eBird Basic Dataset: the ebd_* tables in the derived database (db:load ebird-ebd ...)
+ * Matches species, builds checklists, computes frequencies and phenology, backtests the
+ * forecast gate, and writes docs/reports/spike-<source>-<name>.md.
  *
- *   bun pipeline/src/spike/gbif/analyse.ts mizoram "Mizoram"
+ *   bun pipeline/src/spike/gbif/analyse.ts mizoram "Mizoram"                 (GBIF)
+ *   bun pipeline/src/spike/gbif/analyse.ts kerala "Kerala" --ebd IN-KL       (eBird dataset)
  *
- * Everything lives in .data/spike/spike.duckdb; the base is attached read-only.
+ * Working tables live in .data/spike/<source>-<name>.duckdb; base and derived are read-only.
  */
 import { existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { Db, lit, type Row } from "../../db/duck.ts";
 import { dbFile, defaultPaths } from "../../db/paths.ts";
 
-const [name, label = name] = process.argv.slice(2);
-if (!name) {
-  console.error('usage: analyse.ts <name> ["State name"]');
+const args = process.argv.slice(2);
+const ebdAt = args.indexOf("--ebd");
+const ebdState = ebdAt >= 0 ? args[ebdAt + 1] : undefined;
+if (ebdAt >= 0) args.splice(ebdAt, 2);
+const [name, label = name] = args;
+if (!name || (ebdAt >= 0 && !ebdState)) {
+  console.error('usage: analyse.ts <name> ["State name"] [--ebd <eBird state code>]');
   process.exit(2);
 }
+const sourceTag = ebdState ? "ebd" : "gbif";
 
 const EBIRD = "4fa7b334-ce0d-4e88-aaae-2e0c138d049e";
 /** Minimum checklists in a week of one year for that week to count in phenology. */
@@ -26,21 +34,8 @@ const MIN_LISTS = 5;
 const MIN_SEASONS = 5;
 
 const p = defaultPaths();
-const rawDir = join(p.dataDir, "spike", "raw");
-const jsonl = join(rawDir, `${name}.jsonl`);
-const tsv = join(rawDir, `${name}.tsv`);
-const source = existsSync(tsv)
-  ? `(SELECT * FROM read_csv(${lit(tsv)}, delim = '\t', header = true, quote = '', escape = '', all_varchar = true))`
-  : existsSync(jsonl)
-    ? `(SELECT *, NULL::VARCHAR AS verbatimscientificname FROM read_json(${lit(jsonl)}, format = 'newline_delimited'))`
-    : null;
-if (!source) {
-  console.error(`no raw file for ${name} in ${rawDir}`);
-  process.exit(1);
-}
-
 mkdirSync(join(p.dataDir, "spike"), { recursive: true });
-const db = await Db.open(join(p.dataDir, "spike", `${name}.duckdb`));
+const db = await Db.open(join(p.dataDir, "spike", `${sourceTag}-${name}.duckdb`));
 await db.run(`ATTACH ${lit(dbFile(p, "base"))} AS base (READ_ONLY)`);
 
 const step = async (what: string, sql: string) => {
@@ -49,68 +44,125 @@ const step = async (what: string, sql: string) => {
   console.log(`  ${what} (${Math.round(performance.now() - t)} ms)`);
 };
 
-// ---------------------------------------------------------------- 1. records
-await step("load records", `CREATE OR REPLACE TABLE raw AS SELECT * FROM ${source}`);
+// Both sources end this section with the same tables:
+//   rec      one row per record (for the matching and coverage summary)
+//   list_map checklist id -> sampling event (shared group copies merged)
+//   hit      one row per species per sampling event
+//   list     one row per sampling event, with its species count
+if (ebdState) {
+  // ------------------------------------------------------------ eBird Basic Dataset
+  await db.run(`ATTACH ${lit(dbFile(p, "derived"))} AS derived (READ_ONLY)`);
+  const st = lit(ebdState);
+  await step(
+    "records",
+    `CREATE OR REPLACE TABLE rec AS
+     SELECT NULL::BIGINT AS gbifid, TRUE AS is_ebird, o.taxon_id, NULL AS species, NULL AS verbatim,
+            'SPECIES' AS taxonrank, c.obs_date AS d, c.lat, c.lon, c.list_id AS eventid,
+            c.observer_id AS observers, c.scope_code AS district, s.name_en AS district_name,
+            c.year AS yr, c.week48, c.complete, c.group_id, o.approved
+     FROM derived.ebd_checklist c
+     JOIN derived.ebd_observation o USING (list_id)
+     LEFT JOIN base.scope s ON s.scope_code = c.scope_code
+     WHERE c.state_code = ${st} AND c.year >= 2015`,
+  );
+  await step("raw", "CREATE OR REPLACE TABLE raw AS SELECT * FROM rec");
+  // Complete checklists only; one sampling event per eBird group
+  await step(
+    "checklists",
+    `CREATE OR REPLACE TABLE list_map AS
+     SELECT list_id AS eventid, coalesce(group_id, list_id) AS list_id
+     FROM derived.ebd_checklist WHERE state_code = ${st} AND year >= 2015 AND complete`,
+  );
+  await step(
+    "hits",
+    `CREATE OR REPLACE TABLE hit AS
+     SELECT DISTINCT m.list_id, o.taxon_id, c.obs_date AS d, c.year AS yr, c.week48, c.scope_code AS district
+     FROM derived.ebd_observation o JOIN list_map m ON m.eventid = o.list_id
+     JOIN derived.ebd_checklist c ON c.list_id = o.list_id
+     WHERE o.approved`,
+  );
+  // Every complete checklist counts, including ones that recorded none of our species
+  await step(
+    "lists",
+    `CREATE OR REPLACE TABLE list AS
+     SELECT m.list_id, any_value(c.obs_date) AS d, any_value(c.year) AS yr, any_value(c.week48) AS week48,
+            any_value(c.scope_code) AS district,
+            (SELECT count(DISTINCT h.taxon_id) FROM hit h WHERE h.list_id = m.list_id) AS n_species
+     FROM list_map m JOIN derived.ebd_checklist c ON c.list_id = m.eventid
+     GROUP BY m.list_id`,
+  );
+} else {
+  // ------------------------------------------------------------ GBIF
+  const rawDir = join(p.dataDir, "spike", "raw");
+  const jsonl = join(rawDir, `${name}.jsonl`);
+  const tsv = join(rawDir, `${name}.tsv`);
+  const source = existsSync(tsv)
+    ? `(SELECT * FROM read_csv(${lit(tsv)}, delim = '\t', header = true, quote = '', escape = '', all_varchar = true))`
+    : existsSync(jsonl)
+      ? `(SELECT *, NULL::VARCHAR AS verbatimscientificname FROM read_json(${lit(jsonl)}, format = 'newline_delimited'))`
+      : null;
+  if (!source) {
+    console.error(`no raw file for ${name} in ${rawDir}`);
+    process.exit(1);
+  }
+  await step("load records", `CREATE OR REPLACE TABLE raw AS SELECT * FROM ${source}`);
 
-// Names that point to exactly one of our species, under any authority
-await step(
-  "name map",
-  `CREATE OR REPLACE TABLE name_map AS
-   SELECT sci_name, any_value(taxon_id) AS taxon_id FROM base.taxon_name
-   WHERE sci_name IS NOT NULL GROUP BY 1 HAVING count(DISTINCT taxon_id) = 1`,
-);
-
-await step(
-  "normalise and match",
-  `CREATE OR REPLACE TABLE rec AS
-   SELECT CAST(r.gbifid AS BIGINT) AS gbifid,
-          r.datasetkey = ${lit(EBIRD)} AS is_ebird,
-          coalesce(mv.taxon_id, mb.taxon_id) AS taxon_id,
-          r.species, r.verbatimscientificname AS verbatim, r.taxonrank,
-          TRY_CAST(left(CAST(r.eventdate AS VARCHAR), 10) AS DATE) AS d,
-          TRY_CAST(r.decimallatitude AS DOUBLE) AS lat, TRY_CAST(r.decimallongitude AS DOUBLE) AS lon,
-          r.eventid,
-          array_to_string(list_sort(list_distinct(
-            regexp_extract_all(CAST(r.recordedby AS VARCHAR), 'obsr[0-9]+'))), '|') AS observers,
-          r.level2gid AS district, r.level2name AS district_name
-   FROM raw r
-   LEFT JOIN name_map mv ON mv.sci_name = r.verbatimscientificname
-   LEFT JOIN name_map mb ON mb.sci_name = r.species`,
-);
-
-await step(
-  "add weeks",
-  `CREATE OR REPLACE TABLE rec AS
-   SELECT *, year(d) AS yr,
-          (month(d) - 1) * 4 + least(4, (day(d) - 1) // 7 + 1) AS week48
-   FROM rec WHERE d IS NOT NULL`,
-);
-
-// ---------------------------------------------------------------- 2. checklists
-// A shared group checklist appears once per observer, each copy with its own id but the
-// same date, place and observer list. Collapse those copies into one sampling event.
-await step(
-  "checklists",
-  `CREATE OR REPLACE TABLE list_map AS
-   SELECT eventid,
-          min(eventid) OVER (PARTITION BY d, round(lat, 4), round(lon, 4), observers) AS list_id
-   FROM (SELECT DISTINCT eventid, d, lat, lon, observers FROM rec
-         WHERE is_ebird AND eventid IS NOT NULL)`,
-);
-await step(
-  "hits",
-  `CREATE OR REPLACE TABLE hit AS
-   SELECT DISTINCT m.list_id, r.taxon_id, r.d, r.yr, r.week48, r.district
-   FROM rec r JOIN list_map m USING (eventid)
-   WHERE r.is_ebird AND r.taxon_id IS NOT NULL`,
-);
-await step(
-  "lists",
-  `CREATE OR REPLACE TABLE list AS
-   SELECT list_id, any_value(d) AS d, any_value(yr) AS yr, any_value(week48) AS week48,
-          any_value(district) AS district, count(DISTINCT taxon_id) AS n_species
-   FROM hit GROUP BY 1`,
-);
+  // Names that point to exactly one of our species, under any authority
+  await step(
+    "name map",
+    `CREATE OR REPLACE TABLE name_map AS
+     SELECT sci_name, any_value(taxon_id) AS taxon_id FROM base.taxon_name
+     WHERE sci_name IS NOT NULL GROUP BY 1 HAVING count(DISTINCT taxon_id) = 1`,
+  );
+  await step(
+    "normalise and match",
+    `CREATE OR REPLACE TABLE rec AS
+     SELECT CAST(r.gbifid AS BIGINT) AS gbifid,
+            r.datasetkey = ${lit(EBIRD)} AS is_ebird,
+            coalesce(mv.taxon_id, mb.taxon_id) AS taxon_id,
+            r.species, r.verbatimscientificname AS verbatim, r.taxonrank,
+            TRY_CAST(left(CAST(r.eventdate AS VARCHAR), 10) AS DATE) AS d,
+            TRY_CAST(r.decimallatitude AS DOUBLE) AS lat, TRY_CAST(r.decimallongitude AS DOUBLE) AS lon,
+            r.eventid,
+            array_to_string(list_sort(list_distinct(
+              regexp_extract_all(CAST(r.recordedby AS VARCHAR), 'obsr[0-9]+'))), '|') AS observers,
+            r.level2gid AS district, r.level2name AS district_name
+     FROM raw r
+     LEFT JOIN name_map mv ON mv.sci_name = r.verbatimscientificname
+     LEFT JOIN name_map mb ON mb.sci_name = r.species`,
+  );
+  await step(
+    "add weeks",
+    `CREATE OR REPLACE TABLE rec AS
+     SELECT *, year(d) AS yr,
+            (month(d) - 1) * 4 + least(4, (day(d) - 1) // 7 + 1) AS week48
+     FROM rec WHERE d IS NOT NULL`,
+  );
+  // A shared group checklist appears once per observer, each copy with its own id but the
+  // same date, place and observer list. Collapse those copies into one sampling event.
+  await step(
+    "checklists",
+    `CREATE OR REPLACE TABLE list_map AS
+     SELECT eventid,
+            min(eventid) OVER (PARTITION BY d, round(lat, 4), round(lon, 4), observers) AS list_id
+     FROM (SELECT DISTINCT eventid, d, lat, lon, observers FROM rec
+           WHERE is_ebird AND eventid IS NOT NULL)`,
+  );
+  await step(
+    "hits",
+    `CREATE OR REPLACE TABLE hit AS
+     SELECT DISTINCT m.list_id, r.taxon_id, r.d, r.yr, r.week48, r.district
+     FROM rec r JOIN list_map m USING (eventid)
+     WHERE r.is_ebird AND r.taxon_id IS NOT NULL`,
+  );
+  await step(
+    "lists",
+    `CREATE OR REPLACE TABLE list AS
+     SELECT list_id, any_value(d) AS d, any_value(yr) AS yr, any_value(week48) AS week48,
+            any_value(district) AS district, count(DISTINCT taxon_id) AS n_species
+     FROM hit GROUP BY 1`,
+  );
+}
 
 // ---------------------------------------------------------------- 3. frequencies
 await step(
@@ -233,8 +285,12 @@ const table = (rows: Row[]): string => {
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 const weekLabel = (w: number) =>
   `${["1", "8", "15", "22"][(w - 1) % 4]} ${MONTHS[Math.floor((w - 1) / 4)]}`;
-const posLabel = (kind: string, pos: number | null) =>
-  pos == null ? "" : weekLabel(kind === "winter" ? ((pos - 1 + 24) % 48) + 1 : pos);
+/** Medians can fall between weeks; round to the nearest week before labelling. */
+const posLabel = (kind: string, pos: number | null) => {
+  if (pos == null) return "";
+  const w = Math.round(pos);
+  return weekLabel(kind === "winter" ? ((w - 1 + 24) % 48) + 1 : w);
+};
 
 const totals = (
   await q(`SELECT
@@ -319,10 +375,12 @@ const gFirst = gate("first");
 const pct = (a: number, b: number) => (b ? `${Math.round((100 * a) / b)}%` : "n/a");
 
 const md: string[] = [];
-md.push(`# GBIF spike: ${label}\n`);
+md.push(`# Forecast spike (${ebdState ? "eBird Basic Dataset" : "GBIF"}): ${label}\n`);
 md.push(
   `Generated ${new Date().toISOString().slice(0, 10)} by \`pipeline/src/spike/gbif/analyse.ts\`. ` +
-    "Records: GBIF, India birds 2015-2025, CC0 and CC BY only. Frequencies use eBird checklists only.\n",
+    (ebdState
+      ? `Records: eBird Basic Dataset, ${ebdState}, 2015 onward. Frequencies use complete, approved checklists only; shared group checklists count once.\n`
+      : "Records: GBIF, India birds 2015-2025, CC0 and CC BY only. Frequencies use eBird checklists only.\n"),
 );
 md.push("## Records and matching\n");
 md.push(table([totals as Row]));
@@ -389,7 +447,7 @@ md.push(
 md.push("\n**Every backtest forecast** (week positions within the season):\n");
 md.push(table(bt));
 
-const out = join(p.reportsDir, `spike-gbif-${name}.md`);
+const out = join(p.reportsDir, `spike-${sourceTag}-${name}.md`);
 mkdirSync(p.reportsDir, { recursive: true });
 writeFileSync(out, `${md.join("\n")}\n`);
 console.log(`wrote ${out}`);
