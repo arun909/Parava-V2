@@ -8,6 +8,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@duckdb/node-api": "^2.0.0-r.1",
     "@parava/shared": "workspace:*"
   }
 }

@@ -1,0 +1,39 @@
+{
+  "releases": [
+    {
+      "release_id": "india-checklist-v10.1",
+      "source_id": "india-checklist",
+      "version": "10.1",
+      "published": "2026-05-15",
+      "status": "final",
+      "format": "xlsx",
+      "file": "india-checklist/india-checklist-v10.1/India-Checklist_v10_1.xlsx",
+      "sha256": "9448923495f8b9795f921c10015fcbf1e363f9e06426be689c2de87af64f7e47",
+      "url": "https://indianbirds.in/india/",
+      "notes": "Praveen J. & Jayapal R. 2026. Checklist of the birds of India (v10.1). Reuse terms to confirm with the authors."
+    },
+    {
+      "release_id": "soib-2026-v0",
+      "source_id": "soib",
+      "version": "2026 v0",
+      "published": null,
+      "status": "draft",
+      "format": "xlsx",
+      "file": "soib/soib-2026-v0/02_SoIB_2026_main_v0.xlsx",
+      "sha256": "e66eb99b64bdd7e13342235a8f2d311e12895c8734567135e9df4c42ad4c2725",
+      "url": null,
+      "notes": "Draft workbook. Assessment columns are the SoIB 2023 edition. Licence to confirm with the SoIB team; publish nothing until then."
+    },
+    {
+      "release_id": "soib-2020",
+      "source_id": "soib",
+      "version": "2020",
+      "published": "2020-02-17",
+      "status": "superseded",
+      "format": "columns-of",
+      "of": "soib-2026-v0",
+      "url": "https://stateofindiasbirds.in",
+      "notes": "The four SoIB 2020 status columns carried in the India sheet of soib-2026-v0."
+    }
+  ]
+}

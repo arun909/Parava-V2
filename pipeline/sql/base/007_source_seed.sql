@@ -1,0 +1,86 @@
+-- Registered sources. Releases are added by each loader from pipeline/sources.json.
+INSERT INTO source (source_id, name, homepage, licence, attribution) VALUES
+('india-checklist', 'Checklist of the birds of India', 'https://indianbirds.in/india/', 'to-confirm',
+ 'Praveen J. & Jayapal R. Checklist of the birds of India. Indian BIRDS.'),
+('soib', 'State of India''s Birds', 'https://stateofindiasbirds.in', 'to-confirm',
+ 'SoIB partnership. State of India''s Birds.'),
+('ebird-tax', 'eBird/Clements Checklist of Birds of the World',
+ 'https://www.birds.cornell.edu/clementschecklist/', 'free-with-citation',
+ 'Clements, J. F. et al. The eBird/Clements checklist of Birds of the World.'),
+('avonet', 'AVONET', 'https://doi.org/10.1111/ele.13898', 'CC-BY-4.0',
+ 'Tobias J. A. et al. 2022. AVONET: morphological, ecological and geographical data for all birds. Ecology Letters 25: 581-597.'),
+('wikidata', 'Wikidata', 'https://www.wikidata.org', 'CC0-1.0', 'Wikidata contributors.');
+
+-- How SoIB names its sheets
+INSERT INTO scope_alias (source_id, alias, scope_code) VALUES
+('soib', 'India', 'IN'),
+('soib', 'Andaman and Nicobar Islands', 'IN-AN'),
+('soib', 'Andhra Pradesh', 'IN-AP'),
+('soib', 'Arunachal Pradesh', 'IN-AR'),
+('soib', 'Assam', 'IN-AS'),
+('soib', 'Bihar', 'IN-BR'),
+('soib', 'Chandigarh', 'IN-CH'),
+('soib', 'Chhattisgarh', 'IN-CT'),
+('soib', 'Dadra and Nagar Haveli', 'IN-DN'),
+('soib', 'Daman and Diu', 'IN-DD'),
+('soib', 'Delhi', 'IN-DL'),
+('soib', 'Goa', 'IN-GA'),
+('soib', 'Gujarat', 'IN-GJ'),
+('soib', 'Haryana', 'IN-HR'),
+('soib', 'Himachal Pradesh', 'IN-HP'),
+('soib', 'Jammu and Kashmir', 'IN-JK'),
+('soib', 'Jharkhand', 'IN-JH'),
+('soib', 'Karnataka', 'IN-KA'),
+('soib', 'Kerala', 'IN-KL'),
+('soib', 'Ladakh', 'IN-LA'),
+('soib', 'Lakshadweep', 'IN-LD'),
+('soib', 'Madhya Pradesh', 'IN-MP'),
+('soib', 'Maharashtra', 'IN-MH'),
+('soib', 'Manipur', 'IN-MN'),
+('soib', 'Meghalaya', 'IN-ML'),
+('soib', 'Mizoram', 'IN-MZ'),
+('soib', 'Nagaland', 'IN-NL'),
+('soib', 'Odisha', 'IN-OR'),
+('soib', 'Puducherry', 'IN-PY'),
+('soib', 'Punjab', 'IN-PB'),
+('soib', 'Rajasthan', 'IN-RJ'),
+('soib', 'Sikkim', 'IN-SK'),
+('soib', 'Tamil Nadu', 'IN-TN'),
+('soib', 'Telangana', 'IN-TG'),
+('soib', 'Tripura', 'IN-TR'),
+('soib', 'Uttar Pradesh', 'IN-UP'),
+('soib', 'Uttarakhand', 'IN-UL'),
+('soib', 'West Bengal', 'IN-WB'),
+('soib', 'Woodland', 'hab:woodland'),
+('soib', 'Cropland', 'hab:cropland'),
+('soib', 'ONEs', 'hab:one'),
+('soib', 'PAs', 'hab:pa');
+
+-- Which source wins per field (lower rank wins). PROPOSED: review before exports use it.
+INSERT INTO field_precedence (field, source_id, rank) VALUES
+-- legal: the checklist tracks WPA 2022 and IUCN updates; SoIB copies them
+('iucn', 'india-checklist', 1), ('iucn', 'soib', 2), ('iucn', 'wikidata', 3),
+('wpa_schedule', 'india-checklist', 1), ('wpa_schedule', 'soib', 2),
+('cites', 'india-checklist', 1), ('cites', 'soib', 2),
+('cms', 'india-checklist', 1), ('cms', 'soib', 2),
+-- status in India
+('migratory_status', 'soib', 1),
+('endemicity', 'soib', 1),
+('endemic_india', 'india-checklist', 1), ('endemic_india', 'soib', 2),
+('endemic_subcontinent', 'soib', 1),
+('endemic_himalaya', 'soib', 1),
+('island_only', 'soib', 1),
+('vagrant', 'india-checklist', 1),
+('historical', 'india-checklist', 1),
+-- ecology
+('diet', 'soib', 1), ('habitat_spec', 'soib', 1),
+('activity_breeding', 'soib', 1), ('activity_nonbreeding', 'soib', 1),
+('trophic_level', 'avonet', 1), ('primary_lifestyle', 'avonet', 1),
+-- population
+('pct1_threshold', 'soib', 1), ('generation_years', 'soib', 1),
+('n_subspecies_india', 'soib', 1), ('share_global_range_frac', 'soib', 1),
+-- size and shape
+('mass_g', 'avonet', 1), ('wing_mm', 'avonet', 1), ('tail_mm', 'avonet', 1),
+('tarsus_mm', 'avonet', 1), ('beak_culmen_mm', 'avonet', 1), ('beak_depth_mm', 'avonet', 1),
+('beak_width_mm', 'avonet', 1), ('hand_wing_index', 'avonet', 1),
+('length_cm', 'wikidata', 1), ('wingspan_cm', 'wikidata', 1);
