@@ -1,0 +1,21 @@
+{
+  "name": "@parava/site",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "bun --bun astro dev",
+    "build": "bun --bun astro build",
+    "preview": "bun --bun astro preview",
+    "typecheck": "bun --bun astro check"
+  },
+  "dependencies": {
+    "@astrojs/svelte": "^9.1.6",
+    "@parava/shared": "workspace:*",
+    "astro": "^7.4.13",
+    "svelte": "^5.58.0"
+  },
+  "devDependencies": {
+    "@astrojs/check": "^0.9.12"
+  }
+}

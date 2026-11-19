@@ -1,0 +1,13 @@
+{
+  "name": "@parava/pipeline",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "run": "bun src/index.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@parava/shared": "workspace:*"
+  }
+}

@@ -1,0 +1,5 @@
+# Local secrets for `wrangler dev`. Copy to .dev.vars (gitignored) and fill in.
+# In production, set each one with: bunx wrangler secret put <NAME>
+
+# eBird API key (https://ebird.org/api/keygen). Used only by the Worker.
+EBIRD_API_KEY=

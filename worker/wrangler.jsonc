@@ -1,0 +1,22 @@
+{
+  "$schema": "../node_modules/wrangler/config-schema.json",
+  "name": "parava-worker",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-11-01",
+
+  // One trigger; the dispatcher decides which jobs are due.
+  "triggers": { "crons": ["*/15 * * * *"] },
+
+  // Fill in the ids once the Cloudflare resources exist (Week 0).
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "parava",
+      "database_id": "",
+      "migrations_dir": "migrations"
+    }
+  ],
+  "r2_buckets": [{ "binding": "FILES", "bucket_name": "parava-files" }]
+
+  // Secrets (set with `wrangler secret put`, never committed): EBIRD_API_KEY
+}

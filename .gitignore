@@ -1,0 +1,25 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+.astro/
+.wrangler/
+
+# Warehouse: DuckDB file and Parquet cache (backed up to R2, never committed)
+pipeline/.data/
+
+# Secrets (keys live in the password manager and CI secrets)
+.env
+.env.*
+!.env.example
+.dev.vars
+
+# Documentation (kept local, not in git)
+docs/
+*.md
+
+# Local tooling
+.DS_Store
+*.log
+.claude/settings.local.json
