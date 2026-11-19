@@ -1,7 +1,7 @@
--- Scopes: India, 36 current states and UTs, the two UTs merged in 2020, and SoIB's 4 habitats.
--- State codes follow eBird (subnational1). Confirmed against eBird pages: IN-UL, IN-CT, IN-DL,
--- IN-WB, IN-AP. NOT YET CONFIRMED with eBird: IN-OR (Odisha), IN-TG (Telangana) and the
--- merged-UT codes IN-DH / IN-DN / IN-DD. Check them with eBird's ref/region/list/subnational1/IN.
+-- Scopes: India, eBird's 37 Indian regions (states and UTs), and SoIB's 4 habitats.
+-- State codes are eBird's subnational1 codes, checked against the eBird API
+-- (ref/region/list/subnational1/IN) on 2026-11-19: all 37 match. eBird keeps Dadra and Nagar
+-- Haveli (IN-DN) and Daman and Diu (IN-DD) as separate regions and uses IN-TS for Telangana.
 INSERT INTO scope (scope_code, kind, parent_code, name_en, valid_from, valid_to) VALUES
 ('IN', 'country', NULL, 'India', NULL, NULL);
 
@@ -13,7 +13,8 @@ INSERT INTO scope (scope_code, kind, parent_code, name_en, valid_from, valid_to)
 ('IN-BR', 'state', 'IN', 'Bihar', NULL, NULL),
 ('IN-CH', 'state', 'IN', 'Chandigarh', NULL, NULL),
 ('IN-CT', 'state', 'IN', 'Chhattisgarh', NULL, NULL),
-('IN-DH', 'state', 'IN', 'Dadra and Nagar Haveli and Daman and Diu', DATE '2020-01-26', NULL),
+('IN-DN', 'state', 'IN', 'Dadra and Nagar Haveli', NULL, NULL),
+('IN-DD', 'state', 'IN', 'Daman and Diu', NULL, NULL),
 ('IN-DL', 'state', 'IN', 'Delhi', NULL, NULL),
 ('IN-GA', 'state', 'IN', 'Goa', NULL, NULL),
 ('IN-GJ', 'state', 'IN', 'Gujarat', NULL, NULL),
@@ -37,16 +38,11 @@ INSERT INTO scope (scope_code, kind, parent_code, name_en, valid_from, valid_to)
 ('IN-RJ', 'state', 'IN', 'Rajasthan', NULL, NULL),
 ('IN-SK', 'state', 'IN', 'Sikkim', NULL, NULL),
 ('IN-TN', 'state', 'IN', 'Tamil Nadu', NULL, NULL),
-('IN-TG', 'state', 'IN', 'Telangana', NULL, NULL),
+('IN-TS', 'state', 'IN', 'Telangana', NULL, NULL),
 ('IN-TR', 'state', 'IN', 'Tripura', NULL, NULL),
 ('IN-UP', 'state', 'IN', 'Uttar Pradesh', NULL, NULL),
 ('IN-UL', 'state', 'IN', 'Uttarakhand', NULL, NULL),
 ('IN-WB', 'state', 'IN', 'West Bengal', NULL, NULL);
-
--- The two former UTs SoIB still reports separately; kept as historical scopes under the merged UT
-INSERT INTO scope (scope_code, kind, parent_code, name_en, valid_from, valid_to) VALUES
-('IN-DN', 'state', 'IN-DH', 'Dadra and Nagar Haveli', NULL, DATE '2020-01-25'),
-('IN-DD', 'state', 'IN-DH', 'Daman and Diu', NULL, DATE '2020-01-25');
 
 -- SoIB habitat sheets
 INSERT INTO scope (scope_code, kind, parent_code, name_en, valid_from, valid_to) VALUES

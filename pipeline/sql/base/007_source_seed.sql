@@ -46,7 +46,7 @@ INSERT INTO scope_alias (source_id, alias, scope_code) VALUES
 ('soib', 'Rajasthan', 'IN-RJ'),
 ('soib', 'Sikkim', 'IN-SK'),
 ('soib', 'Tamil Nadu', 'IN-TN'),
-('soib', 'Telangana', 'IN-TG'),
+('soib', 'Telangana', 'IN-TS'),
 ('soib', 'Tripura', 'IN-TR'),
 ('soib', 'Uttar Pradesh', 'IN-UP'),
 ('soib', 'Uttarakhand', 'IN-UL'),

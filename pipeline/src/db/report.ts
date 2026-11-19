@@ -173,7 +173,6 @@ export async function writeReport(p: Paths): Promise<string> {
     parts.push("\n## Open items\n");
     parts.push(
       [
-        "- State codes IN-OR, IN-TG, IN-DH, IN-DN and IN-DD are not yet confirmed against eBird's region list.",
         "- field_precedence and the lookup lists are proposals: review before exports use them.",
         "- SoIB and India checklist licences are 'to-confirm': nothing from them may be published.",
         "- Not loaded yet: eBird taxonomy 2025 (DB3), AVONET (DB4), Wikidata (DB5).",

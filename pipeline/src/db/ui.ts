@@ -16,7 +16,9 @@ await db.run("USE base");
 await db.run("INSTALL ui; LOAD ui;");
 const [row] = await db.rows("CALL start_ui_server()");
 console.log(Object.values(row ?? {}).join(" "));
-console.log("Open http://localhost:4213 — databases: base, derived, content (read-only). Ctrl+C to stop.");
+console.log(
+  "Open http://localhost:4213 — databases: base, derived, content (read-only). Ctrl+C to stop.",
+);
 
 // Keep the process (and the UI server inside it) alive
 setInterval(() => {}, 1 << 30);
