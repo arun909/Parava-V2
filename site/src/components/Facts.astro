@@ -1,0 +1,31 @@
+---
+/** A titled list of label/value pairs. Empty values are skipped; an empty list shows a note. */
+export type Fact = [label: string, value: string | number | boolean | null | undefined];
+
+interface Props {
+  title: string;
+  facts: Fact[];
+}
+
+const { title, facts } = Astro.props;
+const shown = facts.filter(([, v]) => v !== null && v !== undefined && v !== "");
+const fmt = (v: string | number | boolean) => (typeof v === "boolean" ? (v ? "Yes" : "No") : v);
+---
+
+<section class="facts">
+  <h2>{title}</h2>
+  {
+    shown.length ? (
+      <dl>
+        {shown.map(([k, v]) => (
+          <div>
+            <dt>{k}</dt>
+            <dd>{fmt(v as string | number | boolean)}</dd>
+          </div>
+        ))}
+      </dl>
+    ) : (
+      <p class="muted">No data yet.</p>
+    )
+  }
+</section>

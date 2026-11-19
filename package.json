@@ -20,7 +20,8 @@
     "db:load": "bun pipeline/src/db/cli.ts load",
     "db:check": "bun pipeline/src/db/cli.ts check",
     "db:report": "bun pipeline/src/db/cli.ts report",
-    "db:ui": "bun pipeline/src/db/ui.ts"
+    "db:ui": "bun pipeline/src/db/ui.ts",
+    "db:export-site": "bun pipeline/src/db/export-site.ts"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.6.8",

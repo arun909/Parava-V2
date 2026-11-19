@@ -9,6 +9,9 @@ dist/
 # Warehouse: DuckDB file and Parquet cache (backed up to R2, never committed)
 pipeline/.data/
 
+# Site dev data exported from the warehouse (bun run db:export-site; not licensed to publish yet)
+site/.data/
+
 # Secrets (keys live in the password manager and CI secrets)
 .env
 .env.*

@@ -1,0 +1,21 @@
+---
+import PageHeader from "../components/PageHeader.astro";
+import Placeholder from "../components/Placeholder.astro";
+import Base from "../layouts/Base.astro";
+---
+
+<Base title="About">
+  <PageHeader title="About Parava" />
+  <section id="method">
+    <h2>Method</h2>
+    <Placeholder label="How forecasts and likelihoods are computed" />
+  </section>
+  <section id="sources">
+    <h2>Data sources</h2>
+    <Placeholder label="Sources and licences" note="GBIF, eBird, xeno-canto, SoIB, iNaturalist." />
+  </section>
+  <section id="ethics">
+    <h2>Birding ethics</h2>
+    <Placeholder label="Sensitive species and playback" />
+  </section>
+</Base>

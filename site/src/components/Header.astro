@@ -1,0 +1,24 @@
+---
+import { isActive, primaryNav } from "../lib/nav";
+
+const { pathname } = Astro.url;
+---
+
+<header class="site-header">
+  <div class="container site-header__inner">
+    <a class="site-header__brand" href="/">Parava</a>
+    <nav class="site-nav" aria-label="Primary">
+      <ul class="site-nav__list">
+        {
+          primaryNav.map((item) => (
+            <li>
+              <a href={item.href} aria-current={isActive(item.href, pathname) ? "page" : undefined}>
+                {item.label}
+              </a>
+            </li>
+          ))
+        }
+      </ul>
+    </nav>
+  </div>
+</header>

@@ -1,0 +1,179 @@
+---
+import { LOOKUP_SCHEME as S, type SpeciesSummary, type Trend } from "@parava/shared";
+import Facts from "../../components/Facts.astro";
+import PageHeader from "../../components/PageHeader.astro";
+import Placeholder from "../../components/Placeholder.astro";
+import Base from "../../layouts/Base.astro";
+import { label, speciesDetail, speciesIndex } from "../../lib/data";
+
+export function getStaticPaths() {
+  return speciesIndex().map((s) => ({ params: { slug: s.slug }, props: { summary: s } }));
+}
+
+interface Props {
+  summary: SpeciesSummary;
+}
+
+const sp = speciesDetail(Astro.props.summary.slug);
+const many = (scheme: string, codes: string[]) =>
+  codes.map((c) => label(scheme, c)).join(", ") || null;
+const pct = (v: number | null) => (v === null ? null : `${Math.round(v * 100)}%`);
+const trend = (t: Trend) => {
+  const name = label(S.trend, t.status) ?? "—";
+  if (t.meanPct === null) return name;
+  const ci = t.lciPct !== null && t.uciPct !== null ? ` (${t.lciPct} to ${t.uciPct})` : "";
+  return `${name}: ${t.meanPct}%${ci}`;
+};
+
+// Alternative names that differ from the India checklist name.
+const otherNames = sp.names.filter((n) => n.enName !== sp.enName || n.sciName !== sp.sciName);
+const india = sp.assessments.find((a) => a.scope === "IN");
+const regional = sp.assessments.filter((a) => a.scope !== "IN");
+---
+
+<Base title={sp.enName}>
+  <PageHeader title={sp.enName}>
+    <p class="page-header__lede">
+      <em>{sp.sciName}</em>
+      {sp.authority}
+      · {sp.familyEn ?? sp.familySci} · {sp.orderSci}
+    </p>
+  </PageHeader>
+
+  <Placeholder label="Photo" note="With credit and licence. From content DB (media)." />
+  <Placeholder label="Call" note="xeno-canto recording, with playback ethics note." />
+  <Placeholder label="Seasonality" note="52-week presence by state. From derived DB." />
+
+  <div class="grid">
+    <Facts
+      title="Status in India"
+      facts={[
+        ["Migratory status", label(S.migratoryStatus, sp.migratoryStatus)],
+        ["Migratory parts", many(S.migratoryPart, sp.status.migratoryParts)],
+        ["Endemicity", label(S.endemicity, sp.status.endemicity)],
+        ["Endemic to India", sp.endemicIndia],
+        ["Endemic regions", many(S.endemicRegion, sp.status.endemicRegions)],
+        ["Vagrant", sp.status.vagrant],
+        ["Historical only", sp.status.historical],
+      ]}
+    />
+    <Facts
+      title="Conservation and law"
+      facts={[
+        ["IUCN", label(S.iucn, sp.iucn)],
+        ["SoIB priority (India)", label(S.priority, sp.priority)],
+        ["Wildlife Protection Act", label(S.wpaSchedule, sp.legal.wpaSchedule)],
+        ["CITES", label(S.cites, sp.legal.cites)],
+        ["CMS", label(S.cms, sp.legal.cms)],
+      ]}
+    />
+    <Facts
+      title="Ecology"
+      facts={[
+        ["Diet", label(S.diet, sp.ecology.diet)],
+        ["Habitat", label(S.habitat, sp.ecology.habitat)],
+        ["Trophic level", label(S.trophicLevel, sp.ecology.trophicLevel)],
+        ["Lifestyle", label(S.lifestyle, sp.ecology.lifestyle)],
+        ["Activity (breeding)", label(S.activity, sp.ecology.activityBreeding)],
+        ["Activity (non-breeding)", label(S.activity, sp.ecology.activityNonbreeding)],
+      ]}
+    />
+    <Facts
+      title="Size"
+      facts={[
+        ["Mass", sp.morphology.massG && `${sp.morphology.massG} g`],
+        ["Length", sp.morphology.lengthCm && `${sp.morphology.lengthCm} cm`],
+        ["Wingspan", sp.morphology.wingspanCm && `${sp.morphology.wingspanCm} cm`],
+        ["Wing", sp.morphology.wingMm && `${sp.morphology.wingMm} mm`],
+        ["Hand-wing index", sp.morphology.handWingIndex],
+      ]}
+    />
+    <Facts
+      title="Population"
+      facts={[
+        ["Generation length", sp.population.generationYears && `${sp.population.generationYears} years`],
+        ["Share of global range in India", pct(sp.population.shareGlobalRange)],
+        ["1% threshold", sp.population.pct1Threshold],
+        ["Subspecies in India", sp.population.nSubspeciesIndia],
+      ]}
+    />
+    <Facts
+      title="Names and IDs"
+      facts={[
+        ...otherNames.map(
+          (n) => [n.authority, `${n.enName ?? ""} (${n.sciName})`] as [string, string],
+        ),
+        ["Also known as", sp.altNames],
+        ["Parava ID", sp.id],
+        ...Object.entries(sp.xrefs).map(([k, v]) => [k, v] as [string, string]),
+      ]}
+    />
+  </div>
+
+  <section>
+    <h2>State of India's Birds</h2>
+    {
+      india && (
+        <p>
+          India: long-term trend <strong>{trend(india.longTerm)}</strong>; current trend{" "}
+          <strong>{trend(india.current)}</strong>; range {label(S.range, india.rangeStatus) ?? "—"}
+          {india.rangeKm2 !== null && ` (${india.rangeKm2.toLocaleString("en-IN")} km²)`}.
+        </p>
+      )
+    }
+    {
+      regional.length > 0 && (
+        <div class="table-scroll">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Region or habitat</th>
+                <th>Priority</th>
+                <th>Long-term trend</th>
+                <th>Current trend</th>
+                <th>Range (km²)</th>
+                <th>Grids</th>
+              </tr>
+            </thead>
+            <tbody>
+              {regional.map((a) => (
+                <tr>
+                  <td>{a.scopeName ?? a.scope}</td>
+                  <td>{label(S.priority, a.priority)}</td>
+                  <td>{trend(a.longTerm)}</td>
+                  <td>{trend(a.current)}</td>
+                  <td>{a.rangeKm2?.toLocaleString("en-IN")}</td>
+                  <td>{a.nGrids}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )
+    }
+  </section>
+
+  <section>
+    <h2>Links</h2>
+    <ul>
+      {
+        sp.xrefs.ebird && (
+          <li>
+            <a href={`https://ebird.org/species/${sp.xrefs.ebird}`}>eBird</a>
+          </li>
+        )
+      }
+      {
+        sp.xrefs.avibase && (
+          <li>
+            <a href={`https://avibase.bsc-eoc.org/species.jsp?avibaseid=${sp.xrefs.avibase.replace("avibase-", "")}`}>
+              Avibase
+            </a>
+          </li>
+        )
+      }
+    </ul>
+  </section>
+
+  <p class="muted">Sources: {sp.releases.join(", ")}.</p>
+</Base>

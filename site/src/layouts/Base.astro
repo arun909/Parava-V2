@@ -1,11 +1,16 @@
 ---
 import "../styles/global.css";
+import Footer from "../components/Footer.astro";
+import Header from "../components/Header.astro";
 
 interface Props {
   title: string;
+  description?: string;
+  refreshed?: string;
 }
 
-const { title } = Astro.props;
+const { title, description = "A birding companion for India.", refreshed } = Astro.props;
+const fullTitle = title === "Parava" ? title : `${title} · Parava`;
 ---
 
 <!doctype html>
@@ -13,9 +18,15 @@ const { title } = Astro.props;
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>{title}</title>
+    <meta name="description" content={description} />
+    <title>{fullTitle}</title>
   </head>
   <body>
-    <slot />
+    <a class="skip-link" href="#main">Skip to content</a>
+    <Header />
+    <main id="main" class="container site-main">
+      <slot />
+    </main>
+    <Footer refreshed={refreshed} />
   </body>
 </html>

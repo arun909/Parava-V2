@@ -1,0 +1,24 @@
+---
+import PageHeader from "../../components/PageHeader.astro";
+import Placeholder from "../../components/Placeholder.astro";
+import Base from "../../layouts/Base.astro";
+import { type PlaceStub, samplePlaces } from "../../lib/placeholder";
+
+export function getStaticPaths() {
+  return samplePlaces.map((place) => ({ params: { region: place.code }, props: { place } }));
+}
+
+interface Props {
+  place: PlaceStub;
+}
+
+const { place } = Astro.props;
+---
+
+<Base title={place.name}>
+  <PageHeader title={place.name} lede={place.code} />
+  <Placeholder label="What's changing this week" />
+  <Placeholder label="Species by month" />
+  <Placeholder label="Specialities and endemics" />
+  <Placeholder label="Arrival and departure forecasts" note="Expected date, spread, reliability." />
+</Base>

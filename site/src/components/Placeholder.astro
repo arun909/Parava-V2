@@ -1,0 +1,14 @@
+---
+/** A labelled box marking where a section will go. Delete as each section is built. */
+interface Props {
+  label: string;
+  note?: string;
+}
+
+const { label, note } = Astro.props;
+---
+
+<section class="placeholder" aria-label={label}>
+  <strong>{label}</strong>
+  {note && <p class="muted">{note}</p>}
+</section>

@@ -1,0 +1,30 @@
+---
+import { footerNav } from "../lib/nav";
+
+interface Props {
+  /** Date the page's data was last refreshed (PRD: every page shows it). */
+  refreshed?: string;
+}
+
+const { refreshed } = Astro.props;
+---
+
+<footer class="site-footer">
+  <div class="container site-footer__inner">
+    <nav aria-label="Footer">
+      <ul class="site-footer__links">
+        {
+          footerNav.map((item) => (
+            <li>
+              <a href={item.href}>{item.label}</a>
+            </li>
+          ))
+        }
+      </ul>
+    </nav>
+    <p class="muted">
+      Data last refreshed: {refreshed ?? "—"}. Built on open data from GBIF, eBird, xeno-canto and
+      the State of India's Birds.
+    </p>
+  </div>
+</footer>

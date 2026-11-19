@@ -1,0 +1,65 @@
+---
+import { LOOKUP_SCHEME as S, type SpeciesSummary } from "@parava/shared";
+import NoData from "../../components/NoData.astro";
+import PageHeader from "../../components/PageHeader.astro";
+import Placeholder from "../../components/Placeholder.astro";
+import Base from "../../layouts/Base.astro";
+import { hasData, label, speciesIndex } from "../../lib/data";
+
+const all = speciesIndex();
+
+// Group by family, keeping checklist order.
+const families = new Map<string, SpeciesSummary[]>();
+for (const s of all) {
+  const key = s.familyEn ? `${s.familyEn} (${s.familySci})` : s.familySci;
+  const list = families.get(key);
+  if (list) list.push(s);
+  else families.set(key, [s]);
+}
+---
+
+<Base title="Species">
+  <PageHeader
+    title="Species"
+    lede={`${all.length} species on the India checklist, in ${families.size} families.`}
+  />
+  <Placeholder
+    label="Search and filters"
+    note="Search in any language; filter by family, status, state, month, endemic, conservation status."
+  />
+  {!hasData() && <NoData />}
+  {
+    [...families].map(([family, list]) => (
+      <section class="family">
+        <h2>
+          {family} <span class="muted">· {list.length}</span>
+        </h2>
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Species</th>
+              <th>Status</th>
+              <th>IUCN</th>
+              <th>SoIB priority</th>
+            </tr>
+          </thead>
+          <tbody>
+            {list.map((s) => (
+              <tr>
+                <td>
+                  <a href={`/species/${s.slug}/`}>{s.enName}</a>
+                  {s.endemicIndia && <span class="tag">Endemic</span>}
+                  <br />
+                  <em class="muted">{s.sciName}</em>
+                </td>
+                <td>{label(S.migratoryStatus, s.migratoryStatus)}</td>
+                <td>{label(S.iucn, s.iucn)}</td>
+                <td>{label(S.priority, s.priority)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </section>
+    ))
+  }
+</Base>
